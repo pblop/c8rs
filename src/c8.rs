@@ -1,3 +1,5 @@
+use crate::{SCREEN_LINES, SCREEN_COLUMNS};
+
 pub struct Chip8 {
   ram: [u8; 0x1000],     // 4kiB of RAM
 
@@ -10,7 +12,7 @@ pub struct Chip8 {
   st: u8,                // ST, sound timer
 
   stack: [u16; 0x10],
-  display: [bool; 32*64] // Display is 64px wide by 32px tall
+  display: [[bool; SCREEN_COLUMNS]; SCREEN_LINES] // Display is 64px wide by 32px tall
 }
 
 impl Chip8 {
@@ -24,8 +26,17 @@ impl Chip8 {
       dt: 0x00,
       st: 0x00,
       stack: [0x0000; 0x10],
-      display: [false; 32*64]
+      display: [[true; SCREEN_COLUMNS]; SCREEN_LINES]
     }
+  }
+
+  pub fn fde_loop(&mut self) {
+    self.display[0][0] = false;
+    self.display[31][63] = false;
+  }
+
+  pub fn getdisplay(&self) -> &[[bool; SCREEN_COLUMNS]; SCREEN_LINES] {
+    &self.display
   }
 }
 
