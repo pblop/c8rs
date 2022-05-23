@@ -1,3 +1,6 @@
+use std::path::Path;
+use std::fs;
+
 use crate::{SCREEN_LINES, SCREEN_COLUMNS};
 
 pub struct Chip8 {
@@ -31,8 +34,15 @@ impl Chip8 {
   }
 
   pub fn fde_loop(&mut self) {
-    self.display[0][0] = false;
-    self.display[31][63] = false;
+    
+  }
+  
+  pub fn load_file(&mut self, path: &Path) {
+    let contents = fs::read(path).unwrap();
+    
+    for (i, item) in contents.iter().enumerate() {
+      self.ram[i+0x200] = *item;
+    }
   }
 
   pub fn getdisplay(&self) -> &[[bool; SCREEN_COLUMNS]; SCREEN_LINES] {

@@ -3,6 +3,8 @@ use termion::async_stdin;
 use std::io::Read;
 use std::thread;
 use std::time::Duration;
+use clap::Parser;
+use std::path::Path;
 
 // Modules
 pub mod c8;
@@ -12,13 +14,26 @@ pub mod screen;
 pub const SCREEN_LINES: usize = 32;
 pub const SCREEN_COLUMNS: usize = 64;
 
-fn main() {
-  let mut stdin = async_stdin().bytes();
+#[derive(Parser)]
+#[clap(author, version, about, long_about = None)]
+struct Cli {
+    /// The file you want the emulator to execute.
+    binary: String,
+}
 
+fn main() {
+  let cli = Cli::parse();
+  let binary_path = Path::new(&cli.binary);
+
+  if !binary_path.exists() && binary_path.is_file() {
+     println!("Error: Invalid path.");
+  }
+
+  let mut stdin = async_stdin().bytes();
   let mut chip8 = Chip8::new();
 
+  chip8.load_file(&binary_path);
   screen::setup_screen();
-
 
   loop {
     // Loop until the terminal screen is 32x64.
