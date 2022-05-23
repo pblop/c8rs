@@ -104,11 +104,7 @@ impl Chip8 {
         let x: usize = ((instruction & 0x0f00) >> 8) as usize;
         let kk: u8 = (instruction & 0x00ff) as u8;
 
-        //if (kk as u16 + self.v[x] as u16) > 0xff {
-        //  self.v[0xf] = 1;
-        //}
-
-        self.v[x] += kk;
+        self.v[x] = self.v[x].wrapping_add(kk);
       },
       0x8000 => {},
       0x9000 => {},
