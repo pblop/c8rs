@@ -5,6 +5,7 @@ because i like doing fancy stuff in languages i haven't yet mastered just when e
 
 ---
 ### This project depends on
+  * rust nightly
   * [termion](https://docs.rs/termion/latest/termion/)
   * [clap](https://docs.rs/clap/latest/clap/)
 

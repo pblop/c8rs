@@ -1,3 +1,5 @@
+#![feature(bigint_helper_methods)]
+
 use crate::c8::Chip8;
 use termion::async_stdin;
 use std::io::Read;

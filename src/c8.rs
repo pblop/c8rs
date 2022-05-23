@@ -71,7 +71,7 @@ impl Chip8 {
     let instruction_bytes = &self.ram[(self.pc as usize)..((self.pc+2) as usize)];
     let instruction = (instruction_bytes[0] as u16) << 8 | instruction_bytes[1] as u16;
 
-    self.pc += 2;    
+    self.pc += 2;
     
     // ======= Decode & Execute =======
     match instruction & 0xf000 {
@@ -102,13 +102,34 @@ impl Chip8 {
         self.v[x] = kk;
       },
       0x7000 => {         // 7xkk: ADD Vx, byte
-        // NOTE: This ADD instruction does not affect the carry bit in VF.
+        // NOTE: This ADD instruction DOES NOT affect the carry bit in VF.
         let x: usize = ((instruction & 0x0f00) >> 8) as usize;
         let kk: u8 = (instruction & 0x00ff) as u8;
 
         self.v[x] = self.v[x].wrapping_add(kk);
       },
-      0x8000 => {},
+      0x8000 => {
+        match instruction & 0x000f {
+          0x0000 => {},
+          0x0001 => {},
+          0x0002 => {},
+          0x0003 => {},
+          0x0004 => {     // 8xy4: ADD Vx, Vy
+            // NOTE: This ADD instruction DOES affect the carry bit in VF.
+            let x: usize = ((instruction & 0x0f00) >> 8) as usize;
+            let kk: u8 = (instruction & 0x00ff) as u8;
+
+            let carry: bool;
+            (self.v[x], carry) = self.v[x].carrying_add(kk, false);
+            self.v[0xf] = carry as u8;
+          },
+          0x0005 => {},
+          0x0006 => {},
+          0x0007 => {},
+          0x000E => {},
+          _ => {} // Only these instructions exist, if we reach this point, there's a problem somewhere.
+        }
+      },
       0x9000 => {},
       0xA000 => {          // Annn: LD I, addr
         self.i = instruction & 0x0fff;
