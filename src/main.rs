@@ -45,11 +45,13 @@ fn main() {
       _ => {}
     }
 
-    chip8.fde_loop();
-
-    screen::write_array(chip8.get_display());
+    let updated_screen = chip8.fde_loop();
     
+    if updated_screen {
+      screen::write_array(chip8.get_display());
+    }
+
     //TODO: Calculate sleep to make this a 60Hz loop.
-    thread::sleep(Duration::from_millis(50));
+    //thread::sleep(Duration::from_millis(50));
   }
 }

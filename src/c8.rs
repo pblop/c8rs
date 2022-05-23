@@ -64,14 +64,16 @@ impl Chip8 {
     }
   }
 
-  pub fn fde_loop(&mut self) {
-    // =======  Fetch  =======
+  pub fn fde_loop(&mut self) -> bool {
+    let mut display_updated = false;
+
+    // =======      Fetch       =======
     let instruction_bytes = &self.ram[(self.pc as usize)..((self.pc+2) as usize)];
     let instruction = (instruction_bytes[0] as u16) << 8 | instruction_bytes[1] as u16;
 
     self.pc += 2;    
     
-    // =======  Decode =======
+    // ======= Decode & Execute =======
     match instruction & 0xf000 {
       0x0000 => {
         match instruction {
@@ -154,6 +156,10 @@ impl Chip8 {
             self.display[new_y][new_x] ^= mask_bit;
           }
         }
+
+        // TODO: This could be optimised some more by checking if we're actually updating
+        // the screen before setting this to true.
+        display_updated = true;
       },
       0xE000 => {},
       0xF000 => {},
@@ -162,9 +168,7 @@ impl Chip8 {
       _ => {}
     }
 
-
-    // Execute
-  
+    display_updated
   }
   
   pub fn load_file(&mut self, path: &Path) {
