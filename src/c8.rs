@@ -141,8 +141,9 @@ impl Chip8 {
           }
 
           for j in 0..8 {     // For each bit (1 bit per column).
-            // If we're over the border of the screen, stop drawing
             let new_x = (x+j) as usize;
+
+            // If we're over the border of the screen, stop drawing
             if new_x >= SCREEN_COLUMNS {
               break;
             }
