@@ -25,7 +25,7 @@ fn main() {
   let cli = Cli::parse();
   let binary_path = Path::new(&cli.binary);
 
-  if !binary_path.exists() && binary_path.is_file() {
+  if !binary_path.exists() || !binary_path.is_file() {
      println!("Error: Invalid path.");
   }
 
