@@ -151,26 +151,57 @@ impl Chip8 {
         self.v[x] = self.v[x].wrapping_add(kk);
       },
       0x8000 => {
+        let x: usize = ((instruction & 0x0f00) >> 8) as usize;
+        let y: usize = ((instruction & 0x00f0) >> 4) as usize;
+
         match instruction & 0x000f {
           0x0000 => {     // 8xy0: LD Vx, Vy
-
+            self.v[x] = self.v[y];
           },
-          0x0001 => {},
-          0x0002 => {},
-          0x0003 => {},
+          0x0001 => {     // 8xy1: OR Vx, Vy
+            self.v[x] |= self.v[y];
+          },
+          0x0002 => {     // 8xy2: AND Vx, Vy
+            self.v[x] &= self.v[y];
+          },
+          0x0003 => {     // 8xy3: XOR Vx, Vy
+            self.v[x] ^= self.v[y];
+          },
           0x0004 => {     // 8xy4: ADD Vx, Vy
             // NOTE: This ADD instruction DOES affect the carry bit in VF.
-            let x: usize = ((instruction & 0x0f00) >> 8) as usize;
-            let y: usize = ((instruction & 0x00f0) >> 4) as usize;
-
+            
             let carry: bool;
             (self.v[x], carry) = self.v[x].carrying_add(self.v[y], false);
             self.v[0xf] = carry as u8;
           },
-          0x0005 => {},
-          0x0006 => {},
-          0x0007 => {},
-          0x000E => {},
+          0x0005 => {     // 8xy5: SUB Vx, Vy
+            let borrow: bool;
+    
+            (self.v[x], borrow) = self.v[x].borrowing_sub(self.v[y], false);
+
+            self.v[0xf] = !borrow as u8;
+          },
+          0x0006 => {     // 8xy6: SHR Vx, Vy
+            // Quirky: We set Vx = Vy.
+            self.v[x] = self.v[y];
+
+            self.v[0xf] = self.v[x] & 0x0001;
+            self.v[x] >>= 1;
+          },
+          0x0007 => {     // 8xy7: SUBN Vx, Vy
+            let borrow: bool;
+    
+            (self.v[y], borrow) = self.v[y].borrowing_sub(self.v[x], false);
+
+            self.v[0xf] = !borrow as u8;
+          },
+          0x000E => {     // 8xyE: SHL Vx, Vy
+            // Quirky: We set Vx = Vy.
+            self.v[x] = self.v[y];
+
+            self.v[0xf] = (self.v[x] & 0x80) >> 7;
+            self.v[x] <<= 1;
+          },
           _ => {} // Only these instructions exist, if we reach this point, there's a problem somewhere.
         }
       },
@@ -192,6 +223,7 @@ impl Chip8 {
         self.i = instruction & 0x0fff;
       },
       0xB000 => {          // Bnnn: JP V0, addr
+        // Quirky, jumps to nnn + V0
         self.pc = instruction & 0x0fff + (self.v[0x0] as u16);
       },
       0xC000 => {          // Cxkk: RND Vx, byte
