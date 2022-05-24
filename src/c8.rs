@@ -152,17 +152,19 @@ impl Chip8 {
       },
       0x8000 => {
         match instruction & 0x000f {
-          0x0000 => {},
+          0x0000 => {     // 8xy0: LD Vx, Vy
+
+          },
           0x0001 => {},
           0x0002 => {},
           0x0003 => {},
           0x0004 => {     // 8xy4: ADD Vx, Vy
             // NOTE: This ADD instruction DOES affect the carry bit in VF.
             let x: usize = ((instruction & 0x0f00) >> 8) as usize;
-            let kk: u8 = (instruction & 0x00ff) as u8;
+            let y: usize = ((instruction & 0x00f0) >> 4) as usize;
 
             let carry: bool;
-            (self.v[x], carry) = self.v[x].carrying_add(kk, false);
+            (self.v[x], carry) = self.v[x].carrying_add(self.v[y], false);
             self.v[0xf] = carry as u8;
           },
           0x0005 => {},
@@ -189,8 +191,11 @@ impl Chip8 {
       0xA000 => {          // Annn: LD I, addr
         self.i = instruction & 0x0fff;
       },
-      0xB000 => {},
-      0xC000 => {},
+      0xB000 => {          // Bnnn: JP V0, addr
+        self.pc = instruction & 0x0fff + (self.v[0x0] as u16);
+      },
+      0xC000 => {          // Cxkk: RND Vx, byte
+      },
       0xD000 => {          // Dxyn: DRW Vx, Vy, nibble
         // I'm using _x and _y here as to differentiate these two variables from
         // the x and y values I'm grabbing from these registers.
