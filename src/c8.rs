@@ -23,17 +23,17 @@ const FONT: [u8; 5*16] = [
 ];
 
 pub struct Chip8 {
-  pub ram: [u8; 0x1000],     // 4kiB of RAM
+  ram: [u8; 0x1000],     // 4kiB of RAM
 
                          // Registers
   v: [u8; 0x10],         // V0-VF
   i: u16,                // I, index register
-  pub pc: u16,               // PC, program counter
+  pc: u16,               // PC, program counter
   sp: u8,                // SP, stack pointer
   dt: u8,                // DT, delay timer
   st: u8,                // ST, sound timer
 
-  stack: [u16; 0x10],
+  stack: [u16; 0x100],   // 256-word deep stack
   display: [[bool; SCREEN_COLUMNS]; SCREEN_LINES] // Display is 64px wide by 32px tall
 }
 
@@ -47,7 +47,7 @@ impl Chip8 {
       sp: 0x00,
       dt: 0x00,
       st: 0x00,
-      stack: [0x0000; 0x10],
+      stack: [0x0000; 0x100],
       display: [[true; SCREEN_COLUMNS]; SCREEN_LINES]
     };
 
@@ -62,6 +62,19 @@ impl Chip8 {
     for (i, item) in FONT.iter().enumerate() {
       self.ram[i] = *item;
     }
+  }
+
+  // In this stack, the SP points to the next, unfilled,
+  // position in the stack.
+  fn st_push(&mut self, value: u16) {
+    self.stack[self.sp as usize] += value;
+    // This bottom line will overflow and error out when
+    // the result of this operation is greater then 0x100.
+    self.sp += 1;
+  }
+  fn st_pop(&mut self) -> u16 {
+    self.sp -= 1;
+    self.stack[self.sp as usize]
   }
 
   pub fn fde_loop(&mut self) -> bool {
@@ -81,20 +94,49 @@ impl Chip8 {
             self.clear_display();
           },
           0x00EE => {     // 00EE: RET
-            // TODO
+            self.pc = self.st_pop();
           },
           _ => {          // 0nnn: SYS addr
-            // TODO 
+            // TODO. This instruction is not very important.
           }
         }
       },
       0x1000 => {         // 1nnn: JP addr
         self.pc = instruction & 0x0fff;
       },
-      0x2000 => {},
-      0x3000 => {},
-      0x4000 => {},
-      0x5000 => {},
+      0x2000 => {         // 2nnn: CALL addr
+        self.st_push(self.pc);
+        self.pc = instruction & 0x0fff;
+      },
+      0x3000 => {         // 3xkk:  SE Vx, byte
+        let x: usize = ((instruction & 0x0f00) >> 8) as usize;
+        let kk: u8 = (instruction & 0x00ff) as u8;
+        
+        if self.v[x] == kk {
+          self.pc += 2;
+        }
+      },
+      0x4000 => {         // 3xkk:  SNE Vx, byte
+        let x: usize = ((instruction & 0x0f00) >> 8) as usize;
+        let kk: u8 = (instruction & 0x00ff) as u8;
+        
+        if self.v[x] != kk {
+          self.pc += 2;
+        }
+      },
+      0x5000 => {
+                          // 5xy0: SE Vx, Vy
+        if instruction & 0x000f == 0x0000 {
+          let x: usize = ((instruction & 0x0f00) >> 8) as usize;
+          let y: usize = ((instruction & 0x00f0) >> 4) as usize;
+
+          if self.v[x] == self.v[y] {
+            self.pc += 2;
+          }
+        } else {
+          // Unknown instruction
+        }
+      },
       0x6000 => {         // 6xkk: LD Vx, byte
         let x: usize = ((instruction & 0x0f00) >> 8) as usize;
         let kk: u8 = (instruction & 0x00ff) as u8;
@@ -130,7 +172,20 @@ impl Chip8 {
           _ => {} // Only these instructions exist, if we reach this point, there's a problem somewhere.
         }
       },
-      0x9000 => {},
+      0x9000 => {
+                  // 9xy0: SNE Vx, Vy
+        if instruction & 0x000f == 0x0000 {
+          let x: usize = ((instruction & 0x0f00) >> 8) as usize;
+          let y: usize = ((instruction & 0x00f0) >> 4) as usize;
+
+          if self.v[x] != self.v[y] {
+            self.pc += 2;
+          }
+        } else {
+          // Unknown instruction
+        }
+
+      },
       0xA000 => {          // Annn: LD I, addr
         self.i = instruction & 0x0fff;
       },
