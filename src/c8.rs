@@ -77,7 +77,7 @@ impl Chip8 {
     self.stack[self.sp as usize]
   }
 
-  pub fn fde_loop(&mut self) -> bool {
+  pub fn fde_loop(&mut self, pressed_keys: [bool; 16]) -> bool {
     let mut display_updated = false;
 
     // =======      Fetch       =======
@@ -274,8 +274,46 @@ impl Chip8 {
         // the screen before setting this to true.
         display_updated = true;
       },
-      0xE000 => {},
-      0xF000 => {},
+      0xE000 => {
+        let x: usize = ((instruction & 0x0f00) >> 8) as usize;
+        match instruction & 0x00ff {
+          0x009E => {      // Ex9E: SKP Vx
+            if pressed_keys[self.v[x] as usize] {
+              self.pc += 2;
+            }
+          },
+          0x00A1 => {      // ExA1: SKNP Vx
+            if !pressed_keys[self.v[x] as usize] {
+              self.pc += 2;
+            }
+          },
+          // Unknown instruction.
+          _ => {}
+        }
+      },
+      0xF000 => {
+        let x: usize = ((instruction & 0x0f00) >> 8) as usize;
+        match instruction & 0x00ff {
+          0x0007 => {      // Fx07: LD Vx, DT
+            self.v[x] = self.dt;
+          },
+          0x000A => {      // Fx0A: LD Vx, K
+            
+          },
+          0x0015 => {      // Fx15: LD DT, Vx
+            self.dt = self.v[x];
+          },
+          0x0018 => {      // Fx18: LD ST, Vx
+            self.st = self.v[x];
+          },
+          0x000A => {      // Fx0A: LD Vx, K
+            
+          },
+          // Unknown instruction.
+          _ => {}
+        }
+
+      },
 
       // This shouldn't be executed, I've tested for all the possible combinations above.
       _ => {}
