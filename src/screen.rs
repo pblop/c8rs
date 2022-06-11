@@ -1,22 +1,53 @@
 extern crate termion;
 use crate::{SCREEN_LINES, SCREEN_COLUMNS};
-use std::io::{Write, stdout, Stdout};
+use std::io::{Write, stdout, Stdout, Read, Bytes};
+use termion::{async_stdin, AsyncReader};
 use termion::input::MouseTerminal;
 use termion::raw::{IntoRawMode, RawTerminal};
 
+const KEYMAP: [char; 16] = ['1', '2', '3', '4', 'q', 'w', 'e', 'r', 'a', 's', 'd', 'f', 'z', 'x', 'c', 'v'];
+
 pub struct Screen {
-  stdout: MouseTerminal<RawTerminal<Stdout>>
+  stdout: MouseTerminal<RawTerminal<Stdout>>,
+  stdin: Bytes<AsyncReader>,
+  pub pressed_keys: [bool; 16]
 }
 
 impl Screen {
   pub fn new() -> Screen {
     Screen {
-      stdout: MouseTerminal::from(stdout().into_raw_mode().unwrap())
+      stdout: MouseTerminal::from(stdout().into_raw_mode().unwrap()),
+      stdin: async_stdin().bytes(),
+      pressed_keys: [false; 16]
     }
   }
 
   pub fn setup(&mut self) {
     write!(self.stdout, "{}{}{}", termion::clear::All, termion::cursor::Hide, termion::cursor::Goto(1,1)).unwrap();
+  }
+
+  // Updates pressed_keys and returns true if the pressed key means exit.
+  // NOTE: Pressing a key currently presses the virtual key during 1 frame, and pressing any key
+  // outside of the mapped keyboard exits the program.
+  pub fn update_keys(&mut self) -> bool {
+    // Debug.
+    //write!(self.stdout, "{}{}{:?}\n",
+    //  termion::clear::All, termion::cursor::Goto(1,1), self.pressed_keys).unwrap();
+    
+    self.pressed_keys = [false; 16];
+    loop {
+      let bopt = self.stdin.next();
+      match bopt {
+        Some(Ok(b)) => match KEYMAP.iter().position(|&x| x == (b as char)) {
+          Some(index) => self.pressed_keys[index] = true,
+          None => return true
+        },
+        Some(Err(_)) => {},
+        None => break
+      }
+    }
+
+    false
   }
 
   pub fn require_screen_size(&mut self, expected_lines: usize, expected_columns: usize) {

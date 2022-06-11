@@ -32,26 +32,21 @@ fn main() {
      println!("Error: Invalid path.");
   }
 
-  let mut stdin = async_stdin().bytes();
   let mut screen = Screen::new();
   let mut chip8 = Chip8::new();
 
   chip8.load_file(&binary_path);
   screen.setup();
   
-  let mut pressed_keys: [bool; 16] = [false; 16];
-
   loop {
     // Loop until the terminal screen is 32x64.
     screen.require_screen_size(SCREEN_LINES, SCREEN_COLUMNS);
 
-    let b = stdin.next();
-    match b {
-      Some(Ok(b'q')) => break,
-      _ => {}
+    if screen.update_keys() {
+      break;
     }
 
-    let updated_screen = chip8.fde_loop(pressed_keys);
+    let updated_screen = chip8.fde_loop(screen.pressed_keys);
     
     if updated_screen {
       screen.write_array(chip8.get_display());
