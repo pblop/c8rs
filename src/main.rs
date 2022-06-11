@@ -1,6 +1,7 @@
 #![feature(bigint_helper_methods)]
 
 use crate::c8::Chip8;
+use screen::Screen;
 use termion::async_stdin;
 use std::io::Read;
 use std::thread;
@@ -32,14 +33,17 @@ fn main() {
   }
 
   let mut stdin = async_stdin().bytes();
+  let mut screen = Screen::new();
   let mut chip8 = Chip8::new();
 
   chip8.load_file(&binary_path);
-  screen::setup_screen();
+  screen.setup();
+  
+  let mut pressed_keys: [bool; 16] = [false; 16];
 
   loop {
     // Loop until the terminal screen is 32x64.
-    screen::require_screen_size(SCREEN_LINES, SCREEN_COLUMNS);
+    screen.require_screen_size(SCREEN_LINES, SCREEN_COLUMNS);
 
     let b = stdin.next();
     match b {
@@ -47,10 +51,10 @@ fn main() {
       _ => {}
     }
 
-    let updated_screen = chip8.fde_loop();
+    let updated_screen = chip8.fde_loop(pressed_keys);
     
     if updated_screen {
-      screen::write_array(chip8.get_display());
+      screen.write_array(chip8.get_display());
     }
 
     //TODO: Calculate sleep to make this a 60Hz loop.
