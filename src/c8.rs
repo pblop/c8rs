@@ -22,9 +22,10 @@ const FONT: [u8; 5*16] = [
   0xF0, 0x80, 0xF0, 0x80, 0x80  // F
 ];
 
+const FONT_LOCATION: usize = 0x0000;
+
 pub struct Chip8 {
   ram: [u8; 0x1000],     // 4kiB of RAM
-
                          // Registers
   v: [u8; 0x10],         // V0-VF
   i: u16,                // I, index register
@@ -60,7 +61,7 @@ impl Chip8 {
     // I load the font at address 0x000.
     // TODO: Maybe it's better to load it at 0x050.
     for (i, item) in FONT.iter().enumerate() {
-      self.ram[i] = *item;
+      self.ram[i + FONT_LOCATION] = *item;
     }
   }
 
@@ -298,7 +299,13 @@ impl Chip8 {
             self.v[x] = self.dt;
           },
           0x000A => {      // Fx0A: LD Vx, K
-            
+            // In order to block until a key is pressed, if no key is pressed, I decrement the PC
+            // in order to execute this instruction in the next CPU cycle.
+            let pressed_key = pressed_keys.iter().enumerate().find_map(|(key_index, is_pressed)| if *is_pressed { Some(key_index) } else { None });
+            match pressed_key {
+              Some(key_index) => self.v[x] = key_index as u8,
+              None => self.pc -= 2
+            }
           },
           0x0015 => {      // Fx15: LD DT, Vx
             self.dt = self.v[x];
@@ -306,9 +313,37 @@ impl Chip8 {
           0x0018 => {      // Fx18: LD ST, Vx
             self.st = self.v[x];
           },
-          0x000A => {      // Fx0A: LD Vx, K
+          0x001E => {      // Fx1E: ADD I, Vx
+            self.i = self.i.saturating_add(self.v[x] as u16);
             
+            // Set VF to 1 if I "overflows" from 0FFF to above 1000 (outside normal addressing
+            // range).
+            if self.i > 0xFFF {
+              self.v[0xf] = 1;
+            }
           },
+          0x0029 => {      // Fx29: LD F, Vx
+            self.i = ((FONT_LOCATION as u8) + self.v[x]*5) as u16;
+          },
+          0x0033 => {      // Fx33: LD B, Vx
+            self.ram[self.i as usize] = self.v[x] / 100;
+            self.ram[(self.i+1) as usize] = self.v[x] % 100 / 10;
+            self.ram[(self.i+2) as usize] = self.v[x] % 10 / 1;
+          },
+          // NOTE: I do not increment I in there instructions. Older games may require that
+          // behaviour.
+          0x0055 => {      // Fx55: LD [I], Vx
+            for i in 0..x {
+              self.ram[self.i as usize + i] = self.v[i];
+            }
+          },
+          0x0065 => {      // Fx65: LD Vx, [I]
+            for i in 0..0x10 as usize {
+              self.v[i] = self.ram[self.i as usize + i];
+            }
+          },
+
+
           // Unknown instruction.
           _ => {}
         }
