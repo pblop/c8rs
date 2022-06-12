@@ -94,4 +94,8 @@ impl Screen {
 
     lines>=expected_lines && columns>=expected_columns
   }
+
+  pub fn beep(&mut self) {
+    write!(self.stdout, "\x07").unwrap();
+  }
 }

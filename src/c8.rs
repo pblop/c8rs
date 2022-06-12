@@ -65,6 +65,16 @@ impl Chip8 {
     }
   }
 
+  // Returns true if screen should beep
+  pub fn update_timers(&mut self) -> bool {
+    let should_beep = self.sp > 0;
+
+    self.sp = self.sp.saturating_sub(1);
+    self.dt = self.dt.saturating_sub(1);
+    
+    should_beep
+  }
+
   // In this stack, the SP points to the next, unfilled,
   // position in the stack.
   fn st_push(&mut self, value: u16) {

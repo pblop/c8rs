@@ -2,7 +2,6 @@
 
 use crate::c8::Chip8;
 use screen::Screen;
-use std::thread;
 use std::time::Duration;
 use clap::Parser;
 use std::path::Path;
@@ -15,7 +14,7 @@ pub mod screen;
 // CONSTANTS
 pub const SCREEN_LINES: usize = 32;
 pub const SCREEN_COLUMNS: usize = 64;
-pub const HZ: u64 = 60;
+pub const TIMER_HZ: u64 = 60;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -38,6 +37,7 @@ fn main() {
   chip8.load_file(&binary_path);
   screen.setup();
   
+  let mut counter = Duration::new(0, 0); 
   loop {
     let timer = Instant::now();
 
@@ -53,10 +53,14 @@ fn main() {
     if updated_screen {
       screen.write_array(chip8.get_display());
     }
-
-    match Duration::from_millis(1000/HZ).checked_sub(timer.elapsed()) {
-      Some(sleep_duration) => thread::sleep(sleep_duration),
-      None => {}
+    
+    counter += timer.elapsed();
+    
+    if counter >= Duration::from_millis(1000/TIMER_HZ) {
+      counter -= Duration::from_millis(1000/TIMER_HZ);
+      if chip8.update_timers() {
+        screen.beep();
+      }
     }
   }
 }
