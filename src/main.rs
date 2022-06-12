@@ -2,12 +2,11 @@
 
 use crate::c8::Chip8;
 use screen::Screen;
-use termion::async_stdin;
-use std::io::Read;
 use std::thread;
 use std::time::Duration;
 use clap::Parser;
 use std::path::Path;
+use std::time::Instant;
 
 // Modules
 pub mod c8;
@@ -16,6 +15,7 @@ pub mod screen;
 // CONSTANTS
 pub const SCREEN_LINES: usize = 32;
 pub const SCREEN_COLUMNS: usize = 64;
+pub const HZ: u64 = 60;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -39,6 +39,8 @@ fn main() {
   screen.setup();
   
   loop {
+    let timer = Instant::now();
+
     // Loop until the terminal screen is 32x64.
     screen.require_screen_size(SCREEN_LINES, SCREEN_COLUMNS);
 
@@ -52,7 +54,9 @@ fn main() {
       screen.write_array(chip8.get_display());
     }
 
-    //TODO: Calculate sleep to make this a 60Hz loop.
-    //thread::sleep(Duration::from_millis(50));
+    match Duration::from_millis(1000/HZ).checked_sub(timer.elapsed()) {
+      Some(sleep_duration) => thread::sleep(sleep_duration),
+      None => {}
+    }
   }
 }
