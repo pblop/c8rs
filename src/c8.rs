@@ -333,12 +333,12 @@ impl Chip8 {
           // NOTE: I do not increment I in there instructions. Older games may require that
           // behaviour.
           0x0055 => {      // Fx55: LD [I], Vx
-            for i in 0..x {
+            for i in 0..x+1 {
               self.ram[self.i as usize + i] = self.v[i];
             }
           },
           0x0065 => {      // Fx65: LD Vx, [I]
-            for i in 0..0x10 as usize {
+            for i in 0..x+1 as usize {
               self.v[i] = self.ram[self.i as usize + i];
             }
           },
