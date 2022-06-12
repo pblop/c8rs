@@ -6,6 +6,7 @@ use std::time::Duration;
 use clap::Parser;
 use std::path::Path;
 use std::time::Instant;
+use std::thread;
 
 // Modules
 pub mod c8;
@@ -36,7 +37,7 @@ fn main() {
 
   chip8.load_file(&binary_path);
   screen.setup();
-  
+
   let mut counter = Duration::new(0, 0); 
   loop {
     let timer = Instant::now();
@@ -48,11 +49,10 @@ fn main() {
       break;
     }
 
-    let updated_screen = chip8.fde_loop(screen.pressed_keys);
+    let previous_display = chip8.get_display().clone();
+    chip8.fde_loop(screen.pressed_keys);
     
-    if updated_screen {
-      screen.write_array(chip8.get_display());
-    }
+    screen.write(&previous_display, chip8.get_display());
     
     counter += timer.elapsed();
     

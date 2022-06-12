@@ -10,7 +10,9 @@ const KEYMAP: [char; 16] = ['1', '2', '3', '4', 'q', 'w', 'e', 'r', 'a', 's', 'd
 pub struct Screen {
   stdout: MouseTerminal<RawTerminal<Stdout>>,
   stdin: Bytes<AsyncReader>,
-  pub pressed_keys: [bool; 16]
+  pub pressed_keys: [bool; 16],
+  
+  previous_screen_size: (usize, usize)
 }
 
 impl Screen {
@@ -18,7 +20,9 @@ impl Screen {
     Screen {
       stdout: MouseTerminal::from(stdout().into_raw_mode().unwrap()),
       stdin: async_stdin().bytes(),
-      pressed_keys: [false; 16]
+      pressed_keys: [false; 16],
+      
+      previous_screen_size: (0,0)
     }
   }
 
@@ -66,6 +70,17 @@ impl Screen {
     (lines as usize, columns as usize)
   }
 
+  pub fn write(&mut self, prev: &[[bool; SCREEN_COLUMNS]; SCREEN_LINES], display: &[[bool; SCREEN_COLUMNS]; SCREEN_LINES]) {
+    let curr_screen_size = self.get_screen_size();
+    if self.previous_screen_size != curr_screen_size {
+      self.write_array(display)      
+    } else {
+      self.write_changes(prev, display);
+    }
+
+    self.previous_screen_size = curr_screen_size;
+  }
+
   pub fn write_array(&mut self, display: &[[bool; SCREEN_COLUMNS]; SCREEN_LINES]) {
     write!(self.stdout, "{}{}", termion::clear::All, termion::cursor::Goto(1,1)).unwrap();
     for i in 0..SCREEN_LINES {
@@ -89,6 +104,34 @@ impl Screen {
     self.stdout.flush().unwrap();
   }
 
+  pub fn write_changes(&mut self, prev: &[[bool; SCREEN_COLUMNS]; SCREEN_LINES], display: &[[bool; SCREEN_COLUMNS]; SCREEN_LINES]) {
+    let mut has_printed = false;
+
+    for i in 0..SCREEN_LINES {
+      for j in 0..SCREEN_COLUMNS {
+        if prev[i][j] != display[i][j] {
+          // I *MUST* be able to store termion::color::White and Black
+          // in a variable. But I can't seem to find how to.
+          if display[i][j] {
+            write!(self.stdout, "{}{} ", 
+              termion::cursor::Goto((j+1) as u16, (i+1) as u16), 
+              termion::color::Bg(termion::color::White)).unwrap();
+          } else {
+            write!(self.stdout, "{}{} ",
+              termion::cursor::Goto((j+1) as u16, (i+1) as u16), 
+              termion::color::Bg(termion::color::Black)).unwrap();
+          }
+
+          has_printed = true;
+        }
+      }
+    }
+    if has_printed {
+      self.stdout.flush().unwrap();
+    }
+  }
+
+
   pub fn is_correct_screen_size(&mut self, expected_lines: usize, expected_columns: usize) -> bool {
     let (lines, columns) = self.get_screen_size();
 
@@ -97,5 +140,6 @@ impl Screen {
 
   pub fn beep(&mut self) {
     write!(self.stdout, "\x07").unwrap();
+    self.stdout.flush().unwrap();
   }
 }

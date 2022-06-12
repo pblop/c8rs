@@ -1,7 +1,7 @@
 # c8rs: Rusty chip8 emulator for your terminal.
 because i like doing fancy stuff in languages i haven't yet mastered just when exam season is rearing its ugly head. 😀
 
-**State:** Basic instructions are implemented. Just enough of them to display the IBM test below.
+**State:** (almost) fully working, tetris doesn't work.
 
 ---
 ### This project depends on

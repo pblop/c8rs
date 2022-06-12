@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::fs;
+use rand;
 
 use crate::{SCREEN_LINES, SCREEN_COLUMNS};
 
@@ -69,7 +70,7 @@ impl Chip8 {
   pub fn update_timers(&mut self) -> bool {
     let should_beep = self.st > 0;
 
-    self.st= self.st.saturating_sub(1);
+    self.st = self.st.saturating_sub(1);
     self.dt = self.dt.saturating_sub(1);
     
     should_beep
@@ -88,9 +89,7 @@ impl Chip8 {
     self.stack[self.sp as usize]
   }
 
-  pub fn fde_loop(&mut self, pressed_keys: [bool; 16]) -> bool {
-    let mut display_updated = false;
-
+  pub fn fde_loop(&mut self, pressed_keys: [bool; 16]) {
     // =======      Fetch       =======
     let instruction_bytes = &self.ram[(self.pc as usize)..((self.pc+2) as usize)];
     let instruction = (instruction_bytes[0] as u16) << 8 | instruction_bytes[1] as u16;
@@ -238,6 +237,10 @@ impl Chip8 {
         self.pc = instruction & 0x0fff + (self.v[0x0] as u16);
       },
       0xC000 => {          // Cxkk: RND Vx, byte
+        let x: usize = ((instruction & 0x0f00) >> 8) as usize;
+        let kk: u8 = (instruction & 0x00ff) as u8;
+        
+        self.v[x] = rand::random::<u8>() & kk;
       },
       0xD000 => {          // Dxyn: DRW Vx, Vy, nibble
         // I'm using _x and _y here as to differentiate these two variables from
@@ -280,10 +283,6 @@ impl Chip8 {
             self.display[new_y][new_x] ^= mask_bit;
           }
         }
-
-        // TODO: This could be optimised some more by checking if we're actually updating
-        // the screen before setting this to true.
-        display_updated = true;
       },
       0xE000 => {
         let x: usize = ((instruction & 0x0f00) >> 8) as usize;
@@ -363,8 +362,6 @@ impl Chip8 {
       // This shouldn't be executed, I've tested for all the possible combinations above.
       _ => {}
     }
-
-    display_updated
   }
   
   pub fn load_file(&mut self, path: &Path) {
