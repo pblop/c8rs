@@ -7,31 +7,6 @@ use termion::raw::{IntoRawMode, RawTerminal};
 
 const KEYMAP: [char; 16] = ['1', '2', '3', '4', 'q', 'w', 'e', 'r', 'a', 's', 'd', 'f', 'z', 'x', 'c', 'v'];
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MyColor {
-  Black,
-  White,
-  LightBlack
-}
-impl termion::color::Color for MyColor {
-  fn write_fg(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    match self {
-      MyColor::Black => termion::color::Black.write_fg(f),
-      MyColor::White => termion::color::White.write_fg(f),
-      MyColor::LightBlack => termion::color::LightBlack.write_fg(f),
-    }
-  }
-
-  fn write_bg(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    match self {
-      MyColor::Black => termion::color::Black.write_bg(f),
-      MyColor::White => termion::color::White.write_bg(f),
-      MyColor::LightBlack => termion::color::LightBlack.write_bg(f),
-    }
-  }
-}
-
-
 pub struct Screen {
   stdout: MouseTerminal<RawTerminal<Stdout>>,
   stdin: Bytes<AsyncReader>,
@@ -115,13 +90,15 @@ impl Screen {
         // virtual sub-lines. The first sub-line is the top half of the pixel,
         // and the second sub-line is the bottom half of the pixel.
 
-        // Check if the bottom half of the pixel should be rendered, a.k.a. we're
-        // not outside of the screen, a.k.a. the first sub-line is not the last line.
+        // There's no need to check if the bottom half of the pixel should be 
+        // rendered, a.k.a. we're not outside of the screen, a.k.a. the first 
+        // sub-line is not the last line, because the chip8 screen is always
+        // 32x64! (some implementations actually have more resolution, but I
+        // think the number of rows is always a multiple of 2,
+        // so it's not a problem)
 
         let first_pixel = display[i][j];
-        let second_pixel = if i + 1 < SCREEN_LINES { display[i + 1][j] }
-                           else { false }; // If we're outside of the screen, 
-                                           // set false as a default value.
+        let second_pixel = display[i + 1][j];
         let character = match (first_pixel, second_pixel) {
           (true, true) => "█",
           (true, false) => "▀",
@@ -129,25 +106,11 @@ impl Screen {
           (false, false) => " "
         };
 
-        if i+1 < SCREEN_LINES {
-          // These are normal lines. Black (off) background, white (on) foreground.
-          write!(self.stdout, "{}{}{}{}",
-            termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
-            termion::color::Bg(termion::color::Black),
-            termion::color::Fg(termion::color::White),
-            character).unwrap();
-        } else {
-          // This is the last line.
-          // The background should be LightBlack. And the foreground will be the
-          // colour of the pixel.
-          let fg_color: MyColor = if first_pixel { MyColor::White }
-                              else { MyColor::Black };
-          write!(self.stdout, "{}{}{}{}",
-            termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
-            termion::color::Bg(termion::color::LightBlack),
-            termion::color::Fg(fg_color),
-            character).unwrap();
-        }
+        write!(self.stdout, "{}{}{}{}",
+          termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
+          termion::color::Bg(termion::color::Black),
+          termion::color::Fg(termion::color::White),
+          character).unwrap();
       }
     }
     //write!(self.stdout, "{}{}",
@@ -165,46 +128,31 @@ impl Screen {
         // virtual sub-lines. The first sub-line is the top half of the pixel,
         // and the second sub-line is the bottom half of the pixel.
 
-        
-        let first_pixel = display[i][j];
-        let second_pixel = if i + 1 < SCREEN_LINES { display[i + 1][j] }
-                           else { false }; // If we're outside of the screen, 
-                                           // set false as a default value.
-        let character = match (first_pixel, second_pixel) {
-          (true, true) => "█",
-          (true, false) => "▀",
-          (false, true) => "▄",
-          (false, false) => " "
-        };
+        // There's no need to check if the bottom half of the pixel should be 
+        // rendered, a.k.a. we're not outside of the screen, a.k.a. the first 
+        // sub-line is not the last line, because the chip8 screen is always
+        // 32x64! (some implementations actually have more resolution, but I
+        // think the number of rows is always a multiple of 2,
+        // so it's not a problem)
 
-        // Check if the bottom half of the pixel should be rendered, a.k.a. we're
-        // not outside of the screen, a.k.a. the first sub-line is not the last line.
-        if i+1 < SCREEN_LINES {
-          // These are normal lines.
-          if prev[i][j] != display[i][j] || prev[i+1][j] != display[i+1][j] {
-            write!(self.stdout, "{}{}{}{}",
-              termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
-              termion::color::Bg(termion::color::Black),
-              termion::color::Fg(termion::color::White),
-              character).unwrap();
-            has_printed = true;
-          }
-        } else {
-          // This is the last line.
-          if prev[i][j] != display[i][j] {
-            // The background should be LightBlack. And the foreground will be the
-            // colour of the pixel.
-            let fg_color: MyColor = if first_pixel { MyColor::White }
-                              else { MyColor::Black };
+        if prev[i][j] != display[i][j] || prev[i+1][j] == display[i+1][j]
+        {
+          let first_pixel = display[i][j];
+          let second_pixel = display[i + 1][j];
+          let character = match (first_pixel, second_pixel) {
+            (true, true) => "█",
+            (true, false) => "▀",
+            (false, true) => "▄",
+            (false, false) => " "
+          };
 
-            write!(self.stdout, "{}{}{}{}",
-              termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
-              termion::color::Bg(termion::color::LightBlack),
-              termion::color::Fg(fg_color),
-              character).unwrap();
-            has_printed = true;
-          }
+          write!(self.stdout, "{}{}{}{}",
+            termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
+            termion::color::Bg(termion::color::Black),
+            termion::color::Fg(termion::color::White),
+            character).unwrap();
 
+          has_printed = true;
         }
       }
     }
