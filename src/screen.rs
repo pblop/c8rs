@@ -83,49 +83,115 @@ impl Screen {
 
   pub fn write_array(&mut self, display: &[[bool; SCREEN_COLUMNS]; SCREEN_LINES]) {
     write!(self.stdout, "{}{}", termion::clear::All, termion::cursor::Goto(1,1)).unwrap();
-    for i in 0..SCREEN_LINES {
+
+    for i in (0..SCREEN_LINES).step_by(2) {
       for j in 0..SCREEN_COLUMNS {
-        // I *MUST* be able to store termion::color::White and Black
-        // in a variable. But I can't seem to find how to.
-        if display[i][j] {
-          write!(self.stdout, "{}{} ", 
-            termion::cursor::Goto((j+1) as u16, (i+1) as u16), 
-            termion::color::Bg(termion::color::White)).unwrap();
+        // To make pixels look square, I separate every line into two different
+        // virtual sub-lines. The first sub-line is the top half of the pixel,
+        // and the second sub-line is the bottom half of the pixel.
+
+        // Check if the bottom half of the pixel should be rendered, a.k.a. we're
+        // not outside of the screen, a.k.a. the first sub-line is not the last line.
+        if i+1 >= SCREEN_LINES {
+          // This is the last line.
+          let first_pixel = display[i][j];
+          // The background should be LightBlack. And the foreground will be the
+          // colour of the pixel.
+          // I *MUST* be able to store termion::color::White and Black
+          // in a variable. But I can't seem to figure out how to.
+          if first_pixel {
+            write!(self.stdout, "{}{}{}{}",
+              termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
+              termion::color::Bg(termion::color::LightBlack),
+              termion::color::Fg(termion::color::White),
+              if first_pixel { "▀" } else { " " }).unwrap();
+          } else {
+            write!(self.stdout, "{}{}{}{}",
+              termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
+              termion::color::Bg(termion::color::LightBlack),
+              termion::color::Fg(termion::color::Black),
+              if first_pixel { "▀" } else { " " }).unwrap();
+          }
         } else {
-          write!(self.stdout, "{}{} ",
-            termion::cursor::Goto((j+1) as u16, (i+1) as u16), 
-            termion::color::Bg(termion::color::Black)).unwrap();
+          let first_pixel = display[i][j];
+          let second_pixel = display[i+1][j];
+          let character = match (first_pixel, second_pixel) {
+            (true, true) => "█",
+            (true, false) => "▀",
+            (false, true) => "▄",
+            (false, false) => " "
+          };
+          // These are normal lines.
+          write!(self.stdout, "{}{}{}{}",
+            termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
+            termion::color::Bg(termion::color::Black),
+            termion::color::Fg(termion::color::White),
+            character).unwrap();
         }
       }
     }
-    write!(self.stdout, "{}{}",
-      termion::cursor::Goto((SCREEN_COLUMNS+1) as u16, (SCREEN_LINES+1) as u16),
-      termion::color::Bg(termion::color::LightBlack)).unwrap();
+    //write!(self.stdout, "{}{}",
+    //  termion::cursor::Goto((SCREEN_COLUMNS+1) as u16, (SCREEN_LINES+1) as u16),
+    //  termion::color::Bg(termion::color::LightBlack)).unwrap();
     self.stdout.flush().unwrap();
   }
 
   pub fn write_changes(&mut self, prev: &[[bool; SCREEN_COLUMNS]; SCREEN_LINES], display: &[[bool; SCREEN_COLUMNS]; SCREEN_LINES]) {
     let mut has_printed = false;
 
-    for i in 0..SCREEN_LINES {
+    for i in (0..SCREEN_LINES).step_by(2) {
       for j in 0..SCREEN_COLUMNS {
-        if prev[i][j] != display[i][j] {
-          // I *MUST* be able to store termion::color::White and Black
-          // in a variable. But I can't seem to find how to.
-          if display[i][j] {
-            write!(self.stdout, "{}{} ", 
-              termion::cursor::Goto((j+1) as u16, (i+1) as u16), 
-              termion::color::Bg(termion::color::White)).unwrap();
-          } else {
-            write!(self.stdout, "{}{} ",
-              termion::cursor::Goto((j+1) as u16, (i+1) as u16), 
-              termion::color::Bg(termion::color::Black)).unwrap();
-          }
+        // To make pixels look square, I separate every line into two different
+        // virtual sub-lines. The first sub-line is the top half of the pixel,
+        // and the second sub-line is the bottom half of the pixel.
 
-          has_printed = true;
+        // Check if the bottom half of the pixel should be rendered, a.k.a. we're
+        // not outside of the screen, a.k.a. the first sub-line is not the last line.
+        if i+1 >= SCREEN_LINES {
+          if prev[i][j] != display[i][j] {
+            // This is the last line.
+            let first_pixel = display[i][j];
+            // The background should be LightBlack. And the foreground will be the
+            // colour of the pixel.
+            // I *MUST* be able to store termion::color::White and Black
+            // in a variable. But I can't seem to figure out how to.
+            if first_pixel {
+              write!(self.stdout, "{}{}{}{}",
+                termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
+                termion::color::Bg(termion::color::LightBlack),
+                termion::color::Fg(termion::color::White),
+                if first_pixel { "▀" } else { " " }).unwrap();
+            } else {
+              write!(self.stdout, "{}{}{}{}",
+                termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
+                termion::color::Bg(termion::color::LightBlack),
+                termion::color::Fg(termion::color::Black),
+                if first_pixel { "▀" } else { " " }).unwrap();
+            }
+            has_printed = true;
+          }
+        } else {
+          if prev[i][j] != display[i][j] || prev[i+1][j] != display[i+1][j] {
+            let first_pixel = display[i][j];
+            let second_pixel = display[i+1][j];
+            let character = match (first_pixel, second_pixel) {
+              (true, true) => "█",
+              (true, false) => "▀",
+              (false, true) => "▄",
+              (false, false) => " "
+            };
+            // These are normal lines.
+            write!(self.stdout, "{}{}{}{}",
+              termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
+              termion::color::Bg(termion::color::Black),
+              termion::color::Fg(termion::color::White),
+              character).unwrap();
+            has_printed = true;
+          }
         }
       }
     }
+
     if has_printed {
       self.stdout.flush().unwrap();
     }
