@@ -43,18 +43,18 @@ pub enum ColorScheme {
   BlackGreen
 }
 impl ColorScheme {
-  fn get_fg(&self) -> termion::color::Fg<MyColor> {
-    termion::color::Fg(match self {
-      ColorScheme::BlackWhite => MyColor::Black,
-      ColorScheme::OrangeYellow => MyColor::Orange,
-      ColorScheme::BlackGreen => MyColor::Green
-    })
-  }
   fn get_bg(&self) -> termion::color::Bg<MyColor> {
     termion::color::Bg(match self  {
+      ColorScheme::BlackWhite => MyColor::Black,
+      ColorScheme::OrangeYellow => MyColor::Orange,
+      ColorScheme::BlackGreen => MyColor::Black
+    })
+  }
+  fn get_fg(&self) -> termion::color::Fg<MyColor> {
+    termion::color::Fg(match self {
       ColorScheme::BlackWhite => MyColor::White,
       ColorScheme::OrangeYellow => MyColor::Yellow,
-      ColorScheme::BlackGreen => MyColor::Black
+      ColorScheme::BlackGreen => MyColor::Green
     })
   }
  // pub fn from_str(color_scheme_str: &str) -> Option<ColorScheme> {
