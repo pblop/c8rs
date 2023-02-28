@@ -203,7 +203,7 @@ impl Chip8 {
           0x0007 => {     // 8xy7: SUBN Vx, Vy
             let borrow: bool;
     
-            (self.v[y], borrow) = self.v[y].borrowing_sub(self.v[x], false);
+            (self.v[x], borrow) = self.v[y].borrowing_sub(self.v[x], false);
 
             self.v[0xf] = !borrow as u8;
           },
