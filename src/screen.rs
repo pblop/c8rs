@@ -19,8 +19,8 @@ impl termion::color::Color for MyColor {
     match self {
       MyColor::Black => termion::color::Black.write_fg(f),
       MyColor::White => termion::color::White.write_fg(f),
-      MyColor::Orange => termion::color::Yellow.write_fg(f),
-      MyColor::Yellow => termion::color::LightYellow.write_fg(f),
+      MyColor::Orange => termion::color::Rgb(174, 94, 22).write_fg(f),
+      MyColor::Yellow => termion::color::Rgb(253, 195, 45).write_fg(f),
       MyColor::Green => termion::color::Green.write_fg(f),
     }
   }
@@ -29,8 +29,8 @@ impl termion::color::Color for MyColor {
     match self {
       MyColor::Black => termion::color::Black.write_bg(f),
       MyColor::White => termion::color::White.write_bg(f),
-      MyColor::Orange => termion::color::Yellow.write_bg(f),
-      MyColor::Yellow => termion::color::LightYellow.write_bg(f),
+      MyColor::Orange => termion::color::Rgb(174, 94, 22).write_bg(f),
+      MyColor::Yellow => termion::color::Rgb(253, 195, 45).write_bg(f),
       MyColor::Green => termion::color::Green.write_bg(f),
     }
   }
@@ -47,14 +47,14 @@ impl ColorScheme {
     termion::color::Fg(match self {
       ColorScheme::BlackWhite => MyColor::Black,
       ColorScheme::OrangeYellow => MyColor::Orange,
-      ColorScheme::BlackGreen => MyColor::Black
+      ColorScheme::BlackGreen => MyColor::Green
     })
   }
   fn get_bg(&self) -> termion::color::Bg<MyColor> {
     termion::color::Bg(match self  {
       ColorScheme::BlackWhite => MyColor::White,
       ColorScheme::OrangeYellow => MyColor::Yellow,
-      ColorScheme::BlackGreen => MyColor::Green
+      ColorScheme::BlackGreen => MyColor::Black
     })
   }
  // pub fn from_str(color_scheme_str: &str) -> Option<ColorScheme> {
@@ -216,8 +216,8 @@ impl Screen {
 
           write!(self.stdout, "{}{}{}{}",
             termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
-          self.color_scheme.get_bg(),
-          self.color_scheme.get_fg(),
+            self.color_scheme.get_bg(),
+            self.color_scheme.get_fg(),
             character).unwrap();
 
           has_printed = true;
