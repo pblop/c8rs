@@ -1,7 +1,7 @@
 #![feature(bigint_helper_methods)]
 
 use crate::c8::Chip8;
-use screen::Screen;
+use screen::{Screen, ColorScheme};
 use std::time::Duration;
 use clap::Parser;
 use std::path::Path;
@@ -22,6 +22,9 @@ pub const TIMER_HZ: u64 = 500;
 struct Cli {
     /// The file you want the emulator to execute.
     binary: String,
+    /// The color scheme you want to use.
+    #[clap(arg_enum, default_value_t=ColorScheme::BlackWhite)]
+    color_scheme: ColorScheme
 }
 
 fn main() {
@@ -30,9 +33,10 @@ fn main() {
 
   if !binary_path.exists() || !binary_path.is_file() {
      println!("Error: Invalid path.");
+     return;
   }
 
-  let mut screen = Screen::new();
+  let mut screen = Screen::new(cli.color_scheme);
   let mut chip8 = Chip8::new();
 
   chip8.load_file(&binary_path);

@@ -5,6 +5,68 @@ use termion::{async_stdin, AsyncReader};
 use termion::input::MouseTerminal;
 use termion::raw::{IntoRawMode, RawTerminal};
 
+#[derive (Debug)]
+enum MyColor {
+  Black,
+  White,
+  Orange,
+  Yellow,
+  Green
+}
+
+impl termion::color::Color for MyColor {
+  fn write_fg(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    match self {
+      MyColor::Black => termion::color::Black.write_fg(f),
+      MyColor::White => termion::color::White.write_fg(f),
+      MyColor::Orange => termion::color::Yellow.write_fg(f),
+      MyColor::Yellow => termion::color::LightYellow.write_fg(f),
+      MyColor::Green => termion::color::Green.write_fg(f),
+    }
+  }
+
+  fn write_bg(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    match self {
+      MyColor::Black => termion::color::Black.write_bg(f),
+      MyColor::White => termion::color::White.write_bg(f),
+      MyColor::Orange => termion::color::Yellow.write_bg(f),
+      MyColor::Yellow => termion::color::LightYellow.write_bg(f),
+      MyColor::Green => termion::color::Green.write_bg(f),
+    }
+  }
+}
+
+#[derive(clap::ArgEnum, Clone)]
+pub enum ColorScheme {
+  BlackWhite,
+  OrangeYellow,
+  BlackGreen
+}
+impl ColorScheme {
+  fn get_fg(&self) -> termion::color::Fg<MyColor> {
+    termion::color::Fg(match self {
+      ColorScheme::BlackWhite => MyColor::Black,
+      ColorScheme::OrangeYellow => MyColor::Orange,
+      ColorScheme::BlackGreen => MyColor::Black
+    })
+  }
+  fn get_bg(&self) -> termion::color::Bg<MyColor> {
+    termion::color::Bg(match self  {
+      ColorScheme::BlackWhite => MyColor::White,
+      ColorScheme::OrangeYellow => MyColor::Yellow,
+      ColorScheme::BlackGreen => MyColor::Green
+    })
+  }
+ // pub fn from_str(color_scheme_str: &str) -> Option<ColorScheme> {
+ //   match color_scheme_str {
+ //     "black_white" => Some(ColorScheme::BlackWhite),
+ //     "orange_yellow" => Some(ColorScheme::OrangeYellow),
+ //     "black_green" => Some(ColorScheme::BlackGreen),
+ //     _ => None
+ //   }
+ // }
+}
+
 const KEYMAP: [char; 16] = [
   'x', '1', '2', '3', 
   'q', 'w', 'e', 'a', 
@@ -17,17 +79,19 @@ pub struct Screen {
   stdin: Bytes<AsyncReader>,
   pub pressed_keys: [bool; 16],
   
-  previous_screen_size: (usize, usize)
+  previous_screen_size: (usize, usize),
+  color_scheme: ColorScheme
 }
 
 impl Screen {
-  pub fn new() -> Screen {
+  pub fn new(color_scheme: ColorScheme) -> Screen {
     Screen {
       stdout: MouseTerminal::from(stdout().into_raw_mode().unwrap()),
       stdin: async_stdin().bytes(),
       pressed_keys: [false; 16],
       
-      previous_screen_size: (0,0)
+      previous_screen_size: (0,0),
+      color_scheme,
     }
   }
 
@@ -112,8 +176,8 @@ impl Screen {
 
         write!(self.stdout, "{}{}{}{}",
           termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
-          termion::color::Bg(termion::color::Black),
-          termion::color::Fg(termion::color::White),
+          self.color_scheme.get_bg(),
+          self.color_scheme.get_fg(),
           character).unwrap();
       }
     }
@@ -152,8 +216,8 @@ impl Screen {
 
           write!(self.stdout, "{}{}{}{}",
             termion::cursor::Goto((j+1) as u16, (i/2+1) as u16),
-            termion::color::Bg(termion::color::Black),
-            termion::color::Fg(termion::color::White),
+          self.color_scheme.get_bg(),
+          self.color_scheme.get_fg(),
             character).unwrap();
 
           has_printed = true;
