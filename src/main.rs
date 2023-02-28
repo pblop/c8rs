@@ -46,7 +46,13 @@ fn main() {
     // Loop until the terminal screen is 32x64.
     screen.require_screen_size(SCREEN_LINES, SCREEN_COLUMNS);
 
+    // Only poll keypresses every 30 frames
+    if counter % 30 == 0 {
+      if screen.update_keys() {
+        break;
+      }
     }
+    //eprint!("\x1b[{};{}H[main] {:?}", 23, 0, screen.pressed_keys);
 
     let previous_display = chip8.get_display().clone();
     chip8.fde_loop(&screen.pressed_keys);

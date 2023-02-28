@@ -89,10 +89,12 @@ impl Chip8 {
     self.stack[self.sp as usize]
   }
 
-  pub fn fde_loop(&mut self, pressed_keys: [bool; 16]) {
+  pub fn fde_loop(&mut self, pressed_keys: &[bool; 16]) {
     // =======      Fetch       =======
     let instruction_bytes = &self.ram[(self.pc as usize)..((self.pc+2) as usize)];
     let instruction = (instruction_bytes[0] as u16) << 8 | instruction_bytes[1] as u16;
+
+    //eprint!("\x1b[{};{}H[c8] {:?}", 21, 0, pressed_keys);
 
     self.pc += 2;
     
@@ -286,6 +288,7 @@ impl Chip8 {
       },
       0xE000 => {
         let x: usize = ((instruction & 0x0f00) >> 8) as usize;
+        //eprint!("\x1b[{};{}H[c8] Waiting for key {}", 19, 0, x);
         match instruction & 0x00ff {
           0x009E => {      // Ex9E: SKP Vx
             if pressed_keys[self.v[x] as usize] {
@@ -310,11 +313,14 @@ impl Chip8 {
           0x000A => {      // Fx0A: LD Vx, K
             // In order to block until a key is pressed, if no key is pressed, I decrement the PC
             // in order to execute this instruction in the next CPU cycle.
-            let pressed_key = pressed_keys.iter().enumerate().find_map(|(key_index, is_pressed)| if *is_pressed { Some(key_index) } else { None });
+            let pressed_key = pressed_keys.iter()
+              .enumerate()
+              .find_map(|(key_index, is_pressed)| if *is_pressed { Some(key_index) } else { None });
             match pressed_key {
               Some(key_index) => self.v[x] = key_index as u8,
               None => self.pc -= 2
             }
+
           },
           0x0015 => {      // Fx15: LD DT, Vx
             self.dt = self.v[x];

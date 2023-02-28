@@ -5,7 +5,12 @@ use termion::{async_stdin, AsyncReader};
 use termion::input::MouseTerminal;
 use termion::raw::{IntoRawMode, RawTerminal};
 
-const KEYMAP: [char; 16] = ['1', '2', '3', '4', 'q', 'w', 'e', 'r', 'a', 's', 'd', 'f', 'z', 'x', 'c', 'v'];
+const KEYMAP: [char; 16] = [
+  'x', '1', '2', '3', 
+  'q', 'w', 'e', 'a', 
+  's', 'd', 'z', 'c', 
+  '4', 'r', 'f', 'v'
+];
 
 pub struct Screen {
   stdout: MouseTerminal<RawTerminal<Stdout>>,
@@ -31,13 +36,10 @@ impl Screen {
   }
 
   // Updates pressed_keys and returns true if the pressed key means exit.
-  // NOTE: Pressing a key currently presses the virtual key during 1 frame, and pressing any key
-  // outside of the mapped keyboard exits the program.
+  // NOTE: Pressing a key currently presses the virtual key during 1 frame (I
+  // think this is a terminal limitation), and pressing any key outside of the 
+  // mapped keyboard exits the program.
   pub fn update_keys(&mut self) -> bool {
-    // Debug.
-    //write!(self.stdout, "{}{}{:?}\n",
-    //  termion::clear::All, termion::cursor::Goto(1,1), self.pressed_keys).unwrap();
-    
     self.pressed_keys = [false; 16];
     loop {
       let bopt = self.stdin.next();
@@ -51,16 +53,18 @@ impl Screen {
       }
     }
 
+    // Debug
+    //eprint!("\x1b[{};{}H[screen] {:?}", 22, 0, self.pressed_keys);
     false
   }
 
   pub fn require_screen_size(&mut self, expected_lines: usize, expected_columns: usize) {
-    while !self.is_correct_screen_size(expected_lines, expected_columns) {
+    while !self.is_correct_screen_size(expected_lines/2, expected_columns) {
       let (lines, columns) = self.get_screen_size();
   
       write!(self.stdout, "{}{}Expected at least {}x{} screen, current screen is {}x{}\n",
         termion::clear::All, termion::cursor::Goto(1,1),
-        expected_lines, expected_columns, lines, columns).unwrap();
+        expected_lines/2, expected_columns, lines, columns).unwrap();
     }
   }
 
