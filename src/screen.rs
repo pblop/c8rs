@@ -57,14 +57,6 @@ impl ColorScheme {
       ColorScheme::BlackGreen => MyColor::Green
     })
   }
- // pub fn from_str(color_scheme_str: &str) -> Option<ColorScheme> {
- //   match color_scheme_str {
- //     "black_white" => Some(ColorScheme::BlackWhite),
- //     "orange_yellow" => Some(ColorScheme::OrangeYellow),
- //     "black_green" => Some(ColorScheme::BlackGreen),
- //     _ => None
- //   }
- // }
 }
 
 const KEYMAP: [char; 16] = [
