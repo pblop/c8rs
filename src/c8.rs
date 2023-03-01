@@ -97,6 +97,10 @@ impl Chip8 {
     //eprint!("\x1b[{};{}H[c8] {:?}", 21, 0, pressed_keys);
 
     self.pc += 2;
+
+    let x: usize = ((instruction & 0x0f00) >> 8) as usize;
+    let y: usize = ((instruction & 0x00f0) >> 4) as usize;
+    let kk: u8 = (instruction & 0x00ff) as u8;
     
     // ======= Decode & Execute =======
     match instruction & 0xf000 {
@@ -121,27 +125,17 @@ impl Chip8 {
         self.pc = instruction & 0x0fff;
       },
       0x3000 => {         // 3xkk:  SE Vx, byte
-        let x: usize = ((instruction & 0x0f00) >> 8) as usize;
-        let kk: u8 = (instruction & 0x00ff) as u8;
-        
         if self.v[x] == kk {
           self.pc += 2;
         }
       },
       0x4000 => {         // 3xkk:  SNE Vx, byte
-        let x: usize = ((instruction & 0x0f00) >> 8) as usize;
-        let kk: u8 = (instruction & 0x00ff) as u8;
-        
         if self.v[x] != kk {
           self.pc += 2;
         }
       },
-      0x5000 => {
-                          // 5xy0: SE Vx, Vy
+      0x5000 => {         // 5xy0: SE Vx, Vy
         if instruction & 0x000f == 0x0000 {
-          let x: usize = ((instruction & 0x0f00) >> 8) as usize;
-          let y: usize = ((instruction & 0x00f0) >> 4) as usize;
-
           if self.v[x] == self.v[y] {
             self.pc += 2;
           }
@@ -150,22 +144,13 @@ impl Chip8 {
         }
       },
       0x6000 => {         // 6xkk: LD Vx, byte
-        let x: usize = ((instruction & 0x0f00) >> 8) as usize;
-        let kk: u8 = (instruction & 0x00ff) as u8;
-
         self.v[x] = kk;
       },
       0x7000 => {         // 7xkk: ADD Vx, byte
         // NOTE: This ADD instruction DOES NOT affect the carry bit in VF.
-        let x: usize = ((instruction & 0x0f00) >> 8) as usize;
-        let kk: u8 = (instruction & 0x00ff) as u8;
-
         self.v[x] = self.v[x].wrapping_add(kk);
       },
       0x8000 => {
-        let x: usize = ((instruction & 0x0f00) >> 8) as usize;
-        let y: usize = ((instruction & 0x00f0) >> 4) as usize;
-
         match instruction & 0x000f {
           0x0000 => {     // 8xy0: LD Vx, Vy
             self.v[x] = self.v[y];
@@ -181,7 +166,6 @@ impl Chip8 {
           },
           0x0004 => {     // 8xy4: ADD Vx, Vy
             // NOTE: This ADD instruction DOES affect the carry bit in VF.
-            
             let carry: bool;
             (self.v[x], carry) = self.v[x].carrying_add(self.v[y], false);
             self.v[0xf] = carry as u8;
@@ -190,15 +174,13 @@ impl Chip8 {
             let borrow: bool;
     
             (self.v[x], borrow) = self.v[x].borrowing_sub(self.v[y], false);
-
             self.v[0xf] = !borrow as u8;
           },
-          0x0006 => {     // 8xy6: SHR Vx, Vy
-            // Quirky: We set Vx = Vy.
-            self.v[x] = self.v[y];
-
-            self.v[0xf] = self.v[x] & 0x0001;
+          0x0006 => {     // 8xy6: SHR Vx
+            // Vx >>= Vx.
+            let carry = self.v[x] & 0x01;
             self.v[x] >>= 1;
+            self.v[0xf] = carry;
           },
           0x0007 => {     // 8xy7: SUBN Vx, Vy
             let borrow: bool;
@@ -207,12 +189,11 @@ impl Chip8 {
 
             self.v[0xf] = !borrow as u8;
           },
-          0x000E => {     // 8xyE: SHL Vx, Vy
-            // Quirky: We set Vx = Vy.
-            self.v[x] = self.v[y];
-
-            self.v[0xf] = (self.v[x] & 0x80) >> 7;
+          0x000E => {     // 8xyE: SHL Vx
+            // Vx <<= Vx.
+            let carry = (self.v[x] & 0x80) >> 7;
             self.v[x] <<= 1;
+            self.v[0xf] = carry;
           },
           _ => {} // Only these instructions exist, if we reach this point, there's a problem somewhere.
         }
@@ -220,8 +201,6 @@ impl Chip8 {
       0x9000 => {
                   // 9xy0: SNE Vx, Vy
         if instruction & 0x000f == 0x0000 {
-          let x: usize = ((instruction & 0x0f00) >> 8) as usize;
-          let y: usize = ((instruction & 0x00f0) >> 4) as usize;
 
           if self.v[x] != self.v[y] {
             self.pc += 2;
@@ -239,55 +218,50 @@ impl Chip8 {
         self.pc = instruction & 0x0fff + (self.v[0x0] as u16);
       },
       0xC000 => {          // Cxkk: RND Vx, byte
-        let x: usize = ((instruction & 0x0f00) >> 8) as usize;
-        let kk: u8 = (instruction & 0x00ff) as u8;
-        
         self.v[x] = rand::random::<u8>() & kk;
       },
       0xD000 => {          // Dxyn: DRW Vx, Vy, nibble
-        // I'm using _x and _y here as to differentiate these two variables from
-        // the x and y values I'm grabbing from these registers.
-        let _x: usize = ((instruction & 0x0f00) >> 8) as usize;
-        let _y: usize = ((instruction & 0x00f0) >> 4) as usize;
+        // I'm using cx and cy here as to differentiate these two values I'm
+        // grabbing from the registers from the x and y values I got from the
+        // opcode.
         let nibble = instruction & 0x000f;
 
         // Grab the x and y coordinates from Vx and Vy.
-        let x = self.v[_x] % (SCREEN_COLUMNS as u8);
-        let y = self.v[_y] % (SCREEN_LINES as u8);
+        let cx = self.v[x] % (SCREEN_COLUMNS as u8);
+        let cy = self.v[y] % (SCREEN_LINES as u8);
         
         self.v[0xf] = 0;
         
         let sprite_rowdata = &self.ram[(self.i as usize) .. ((self.i+nibble) as usize)]; 
         for i in 0..(nibble as u8) {  // For i in each row.
           let rowdata = sprite_rowdata[i as usize];
-          let new_y = (y+i) as usize;
+          let new_cy = (cy+i) as usize;
          
           // If we're over the border of the screen, stop drawing.
-          if new_y >= SCREEN_LINES {
+          if new_cy >= SCREEN_LINES {
             break;
           }
 
           for j in 0..8 {     // For each bit (1 bit per column).
-            let new_x = (x+j) as usize;
+            let new_cx = (cx+j) as usize;
 
             // If we're over the border of the screen, stop drawing
-            if new_x >= SCREEN_COLUMNS {
+            if new_cx >= SCREEN_COLUMNS {
               break;
             }
             
             // We write bits from the left of the byte to the right of the byte.
             // Thus, we first need to mask 0b10000000 (0x80), then 0b01000000, ...
             let mask_bit = (rowdata & (0x80 >> j)) != 0;
-            if self.display[new_y][new_x] == true && mask_bit == true {
+            if self.display[new_cy][new_cx] == true && mask_bit == true {
               self.v[0xf] = 1;
             }
 
-            self.display[new_y][new_x] ^= mask_bit;
+            self.display[new_cy][new_cx] ^= mask_bit;
           }
         }
       },
       0xE000 => {
-        let x: usize = ((instruction & 0x0f00) >> 8) as usize;
         //eprint!("\x1b[{};{}H[c8] Waiting for key {}", 19, 0, x);
         match instruction & 0x00ff {
           0x009E => {      // Ex9E: SKP Vx
@@ -305,7 +279,6 @@ impl Chip8 {
         }
       },
       0xF000 => {
-        let x: usize = ((instruction & 0x0f00) >> 8) as usize;
         match instruction & 0x00ff {
           0x0007 => {      // Fx07: LD Vx, DT
             self.v[x] = self.dt;
